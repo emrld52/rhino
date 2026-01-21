@@ -1,55 +1,79 @@
+#include "glad/glad.h"
 #include <GLFW/glfw3.h>
 #include <stdio.h>
 #include <stdbool.h>
 
-bool has_user_exited = false;
+#define WINDOW_WIDTH 1920
+#define WINDOW_HEIGHT 1080
+
+// resize gl viewport as window is resized, print debug info also
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+    printf("\nwindow resized to %dx%d", width, height);
+}
+
+void input_handling(GLFWwindow* window)
+{
+    if(glfwGetKey(window, GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
+}
 
 int main(void)
 {
-    GLFWwindow* window;
+    // init opengl, set version and profile (core profile)
 
-    /* Initialize the library */
-    if (!glfwInit())
-        return -1;
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // make a fullscreen window on the primary monitor, change glfwgetprimarymonitor to null to go back to windowed
+    // init opengl window (fullscreen, change glfwGetPrimaryMonitor to NULL if you so need/desire windowed mode)
 
-    window = glfwCreateWindow(2560, 1440, "Hello World", glfwGetPrimaryMonitor(), NULL);
-    if (!window)
+    GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Rhino Framework", NULL, NULL);
+
+    if (window == NULL)
     {
+        printf("\nfailed to create a glfw window.");
         glfwTerminate();
         return -1;
     }
 
-    /* Make the window's context current */
+    // set context to the window just created
+
     glfwMakeContextCurrent(window);
 
-    /* Loop until the user closes the window */
-    while (!glfwWindowShouldClose(window) || !has_user_exited)
+    // frame resizing
+
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+    // init glad (opengl function pointers)
+
+    if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-        /* Render here */
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        glBegin(GL_TRIANGLES);
-        glVertex2f(-0.5f, -0.5f);
-        glVertex2f(0, 0.5f);
-        glVertex2f(0.5f, -0.5f);
-        glEnd();
-
-        /* Swap front and back buffers */
-        glfwSwapBuffers(window);
-
-        /* Poll for and process events */
-        glfwPollEvents();
-
-        // escape program
-
-        if(glfwGetKey(window, GLFW_KEY_ESCAPE)) {
-            glfwTerminate();
-            return 0;
-        }
+        printf("\nfailed to init GLAD, could not load process.");
+        return -1;
     }
 
+    // pass dimensions into opengl viewport
+
+    glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+
+    // begin render loop, check input and swap buffers
+
+    while(!glfwWindowShouldClose(window))
+    {
+        input_handling(window);
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    // exit program, if havent exited manually
+
     glfwTerminate();
-    return 0;
+
+    printf("\nexited program successfully");
+
+    return -1;
 }
