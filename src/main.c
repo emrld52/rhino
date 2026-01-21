@@ -3,24 +3,21 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#define WINDOW_WIDTH 1920
-#define WINDOW_HEIGHT 1080
+#define WINDOW_WIDTH 1024
+#define WINDOW_HEIGHT 1024
 
 // resize gl viewport as window is resized, print debug info also
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
     printf("\nwindow resized to %dx%d", width, height);
 }
 
-void input_handling(GLFWwindow* window)
-{
+void input_handling(GLFWwindow* window) {
     if(glfwGetKey(window, GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
 }
 
-int main(void)
-{
+int main(void) {
     // init opengl, set version and profile (core profile)
 
     glfwInit();
@@ -32,8 +29,7 @@ int main(void)
 
     GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Rhino Framework", NULL, NULL);
 
-    if (window == NULL)
-    {
+    if (window == NULL) {
         printf("\nfailed to create a glfw window.");
         glfwTerminate();
         return -1;
@@ -49,8 +45,7 @@ int main(void)
 
     // init glad (opengl function pointers)
 
-    if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
+    if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         printf("\nfailed to init GLAD, could not load process.");
         return -1;
     }
@@ -61,9 +56,13 @@ int main(void)
 
     // begin render loop, check input and swap buffers
 
-    while(!glfwWindowShouldClose(window))
-    {
+    while(!glfwWindowShouldClose(window)) {
+        // read any input, used to exit program if forced
         input_handling(window);
+
+        // set
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
