@@ -21,18 +21,21 @@ void input_handling(GLFWwindow* window) {
 
 const char *vertex_shader_source = "#version 330 core\n"
 "layout (location = 0) in vec3 aPos; \n"
+"out vec4 col;\n"
 "void main()\n"
 "{\n"
 "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0f);\n"
+"   col = vec4(aPos.x, aPos.y, aPos.z, 1.0f);\n"
 "}\0";
 
 // fragment shader source
     
 const char *fragment_shader_source = "#version 330 core\n"
+"in vec4 col;\n"
 "out vec4 frag_color;\n"
 "void main()\n"
 "{"
-"   frag_color = vec4(1.0f, 0.0f, 0.0f, 1.0f);\n"
+"   frag_color = col * 2;\n"
 "}\0";
 
 int main(void) {
@@ -75,6 +78,13 @@ int main(void) {
 
     // ------------ SHADERS ------------ //
 
+    // print info about max number of vertex attribs
+
+    int num_attributes;
+
+    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &num_attributes);
+
+    printf("maximum number of vertex attribs : %d", num_attributes);
 
     // shader object of vertex shader type, store id as vertex_shader as an unsigned int
 
@@ -195,6 +205,33 @@ int main(void) {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
+    // unbind, build new vao, vbo and ebo and build a triangle to be drawn alongside the quad
+
+    glBindVertexArray(0);
+
+    // new vertices forming triangle
+
+    float vertices2[] = {
+        0.6f, -0.5f, 0.0f,
+        0.7f,  0.5f, 0.0f, 
+        0.8f, -0.5f, 0.0f, 
+    };
+
+    unsigned int VBO2, VAO2;
+
+    glGenVertexArrays(1, &VAO2);
+
+    glBindVertexArray(VAO2);
+
+    glGenBuffers(1, &VBO2);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO2);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices2), vertices2, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindVertexArray(0);
+
     // begin render loop, check input and swap buffers
 
     while(!glfwWindowShouldClose(window)) {
@@ -202,12 +239,17 @@ int main(void) {
         input_handling(window);
 
         // set blank greenish background and clear screen
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.65f, 0.8f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(shader_program);
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        glUseProgram(shader_program);
+        glBindVertexArray(VAO2);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
         glBindVertexArray(0);
 
         glfwSwapBuffers(window);
