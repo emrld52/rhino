@@ -225,5 +225,5 @@ int main(void) {
 
     printf("\nexited program successfully");
 
-    return -1;
+    return 0;
 }
