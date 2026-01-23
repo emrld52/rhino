@@ -2,8 +2,9 @@
 #include <GLFW/glfw3.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <math.h>
 
-#define WINDOW_WIDTH 1280
+#define WINDOW_WIDTH 1080
 #define WINDOW_HEIGHT 960
 
 // resize gl viewport as window is resized, print debug info also
@@ -21,21 +22,24 @@ void input_handling(GLFWwindow* window) {
 
 const char *vertex_shader_source = "#version 330 core\n"
 "layout (location = 0) in vec3 aPos; \n"
-"out vec4 col;\n"
+"layout (location = 1) in vec3 aCol; \n"
+"uniform float time;\n"
+"out vec3 col;\n"
 "void main()\n"
 "{\n"
-"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0f);\n"
-"   col = vec4(aPos.x, aPos.y, aPos.z, 1.0f);\n"
+"   float rot_spd_mult = -3.14159 / 2;\n" // pi = 180 deg/sec
+"   gl_Position = vec4((aPos.x * cos(time * rot_spd_mult)) - (aPos.y * sin(time * rot_spd_mult)), (aPos.x * sin(time * rot_spd_mult)) + (aPos.y * cos(time * rot_spd_mult)), aPos.z, 1.0f);\n"
+"   col = aCol * vec3(sin(time), cos(time), sin(time)) + 0.5;\n"
 "}\0";
 
 // fragment shader source
     
 const char *fragment_shader_source = "#version 330 core\n"
-"in vec4 col;\n"
+"in vec3 col;\n"
 "out vec4 frag_color;\n"
 "void main()\n"
 "{"
-"   frag_color = col * 2;\n"
+"   frag_color = vec4(col.xyz, 1.0f);\n"
 "}\0";
 
 int main(void) {
@@ -159,10 +163,10 @@ int main(void) {
     // quad primitive as vertex coordinates
 
     float vertices[] = {
-       -0.5f,  -0.5f,   0.0f, // bottom left
-        0.5f,  -0.5f,   0.0f, // bottom right
-       -0.5f,   0.5f,   0.0f, // top left
-        0.5f,   0.5f,   0.0f  // top right
+       -0.5f,  -0.5f,   0.0f, /* bottom left */  1.0f, 1.0f, 0.0f, /* blue */
+        0.5f,  -0.5f,   0.0f, /* bottom right */ 1.0f, 0.0f, 1.0f, /* yellow */
+       -0.5f,   0.5f,   0.0f, /* top left */     0.0f, 1.0f, 1.0f, /* green */
+        0.5f,   0.5f,   0.0f, /* top right */    1.0f, 1.0f, 0.0f, /* red */
     };
 
     unsigned int indices[] = {
@@ -202,35 +206,18 @@ int main(void) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (GLvoid*)0);
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (GLvoid*)(3 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(1);
 
-    // unbind, build new vao, vbo and ebo and build a triangle to be drawn alongside the quad
+    // unbind
 
     glBindVertexArray(0);
 
-    // new vertices forming triangle
+    // uniforms, used for rotation and color for now
 
-    float vertices2[] = {
-        0.6f, -0.5f, 0.0f,
-        0.7f,  0.5f, 0.0f, 
-        0.8f, -0.5f, 0.0f, 
-    };
-
-    unsigned int VBO2, VAO2;
-
-    glGenVertexArrays(1, &VAO2);
-
-    glBindVertexArray(VAO2);
-
-    glGenBuffers(1, &VBO2);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO2);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices2), vertices2, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glBindVertexArray(0);
+    float time;
 
     // begin render loop, check input and swap buffers
 
@@ -242,14 +229,16 @@ int main(void) {
         glClearColor(0.65f, 0.8f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glUseProgram(shader_program);
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
+        time = glfwGetTime();
+
+        int frag_time_uniform_location = glGetUniformLocation(shader_program, "time");
 
         glUseProgram(shader_program);
-        glBindVertexArray(VAO2);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        glUniform1f(frag_time_uniform_location, time);
+
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
         glfwSwapBuffers(window);
