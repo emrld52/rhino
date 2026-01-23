@@ -57,11 +57,11 @@ void input_handling(GLFWwindow* window) {
 
     // rotation and zoom
 
-    if(glfwGetKey(window, GLFW_KEY_E)) camera_rot += CAMERA_ROT_SPEED * delta_time;
-    if(glfwGetKey(window, GLFW_KEY_Q)) camera_rot += -CAMERA_ROT_SPEED * delta_time;
+    if(glfwGetKey(window, GLFW_KEY_E)) camera_rot += -CAMERA_ROT_SPEED * delta_time;
+    if(glfwGetKey(window, GLFW_KEY_Q)) camera_rot += CAMERA_ROT_SPEED * delta_time;
 
-    if(glfwGetKey(window, GLFW_KEY_Z)) camera_zoom += -CAMERA_ZOOM_SPEED * delta_time;
-    if(glfwGetKey(window, GLFW_KEY_X)) camera_zoom += CAMERA_ZOOM_SPEED * delta_time;
+    if(glfwGetKey(window, GLFW_KEY_Z)) camera_zoom += CAMERA_ZOOM_SPEED * delta_time;
+    if(glfwGetKey(window, GLFW_KEY_X)) camera_zoom += -CAMERA_ZOOM_SPEED * delta_time;
 
     // clamp zoom as to not go inverse
 
@@ -116,7 +116,7 @@ int main(void) {
 
     // ------------ SHADERS ------------ //
 
-    unsigned int shader_program = link_and_compile_shaders("vertex_shader.glsl", "fragment_shader.glsl");
+    unsigned int shader_program = link_and_compile_shaders("D:\\!programming\\C\\rhino\\src\\shaders\\vertex_shader.glsl", "D:\\!programming\\C\\rhino\\src\\shaders\\fragment_shader.glsl");
 
     glUseProgram(shader_program);
 

@@ -5,14 +5,22 @@
 #include <string.h>
 #include <stdlib.h>
 
+// fragment shader source
+    
+const char *fragment_shader_source = "#version 330 core\n"
+"in vec3 col;\n"
+
+"out vec4 frag_color;\n"
+
+"void main()\n"
+"{"
+"   frag_color = vec4(col.xyz, 1.0f);\n"
+"}\0";
+
 // returns unsigned int to shader program
 
 unsigned int link_and_compile_shaders(char* vertex_path, char* fragment_path) {
     // buffers which we will load shaders into, will then send these to gpu memory, compile and link them and then return the unsigned int pointing to the shader program in memory
-    char* vert_shader_source = 0;
-    char* frag_shader_source = 0;
-
-    // buffers we will use to check for errors and print out error data for
 
     int success;
 
@@ -20,48 +28,21 @@ unsigned int link_and_compile_shaders(char* vertex_path, char* fragment_path) {
 
     long length;
 
-    // --- LOAD SHADERS FROM FILE --- //
+    // read shader file, load into memory, due to weird opengl shenanigans convert to const char * const * later on
 
-    FILE *pF = fopen(vertex_path, "rb");
+    FILE* pF = fopen(vertex_path, "r");
 
-    if(pF) {
-        fseek(pF, 0, SEEK_END);
-        length = ftell(pF);
-        fseek(pF, 0, SEEK_SET);
+    int i = 0;
 
-        vert_shader_source = malloc(length + 1);
-        if(vert_shader_source) {
-            size_t bytes_read = fread(vert_shader_source, 1, length, pF);
-            vert_shader_source[bytes_read] = '\0';
-        }
-        fclose(pF);
+    char temp[256];
+
+    char* vert_shader_source[1024];
+
+    while(fgets(temp, sizeof(temp), pF)) {
+        vert_shader_source[i] = malloc(256);
+        memcpy(vert_shader_source[i], temp, 256);
+        i++;
     }
-
-    if(!vert_shader_source) return -1;
-
-    printf("%s", vert_shader_source);
-
-    pF = fopen(fragment_path, "rb");
-
-    if(pF) {
-        fseek(pF, 0, SEEK_END);
-        length = ftell(pF);
-        fseek(pF, 0, SEEK_SET);
-
-        frag_shader_source = malloc(length + 1);
-        if(frag_shader_source) {
-            size_t bytes_read = fread(frag_shader_source, 1, length, pF);
-            frag_shader_source[bytes_read] = '\0';
-        }
-        fclose(pF);
-    }
-
-    if(!frag_shader_source) {
-        free(vert_shader_source);
-        return -1;
-    }
-
-    printf("%s", frag_shader_source);
 
     // --- VERTEX SHADER --- //
 
@@ -69,7 +50,7 @@ unsigned int link_and_compile_shaders(char* vertex_path, char* fragment_path) {
 
     vertex_shader = glCreateShader(GL_VERTEX_SHADER);
 
-    glShaderSource(vertex_shader, 1, (const char**)&vert_shader_source, NULL);
+    glShaderSource(vertex_shader, i, (const char * const *)vert_shader_source, NULL);
     glCompileShader(vertex_shader);
 
     glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
@@ -85,7 +66,7 @@ unsigned int link_and_compile_shaders(char* vertex_path, char* fragment_path) {
 
     fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
 
-    glShaderSource(fragment_shader, 1, (const char**)&frag_shader_source, NULL);
+    glShaderSource(fragment_shader, 1, &fragment_shader_source, NULL);
     glCompileShader(fragment_shader);
 
     glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
@@ -112,9 +93,6 @@ unsigned int link_and_compile_shaders(char* vertex_path, char* fragment_path) {
         glGetProgramInfoLog(shader_program, 512, NULL, error_log);
         printf("error when linking shader program : %s", error_log);
     }
-
-    free(vert_shader_source);
-    free(frag_shader_source);
 
     return shader_program;
 }
