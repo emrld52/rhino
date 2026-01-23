@@ -4,8 +4,10 @@
 #include <stdbool.h>
 #include <math.h>
 
-#define WINDOW_WIDTH 1080
+#define WINDOW_WIDTH 1000
 #define WINDOW_HEIGHT 960
+
+#define PRINT_FRAME_TIME_PER_SECONDS 1.0f
 
 // resize gl viewport as window is resized, print debug info also
 
@@ -27,7 +29,7 @@ const char *vertex_shader_source = "#version 330 core\n"
 "out vec3 col;\n"
 "void main()\n"
 "{\n"
-"   float rot_spd_mult = -3.14159 / 2;\n" // pi = 180 deg/sec
+"   float rot_spd_mult = -3.14159 / 2;\n" // pi = 180 deg/sec rotation speed
 "   gl_Position = vec4((aPos.x * cos(time * rot_spd_mult)) - (aPos.y * sin(time * rot_spd_mult)), (aPos.x * sin(time * rot_spd_mult)) + (aPos.y * cos(time * rot_spd_mult)), aPos.z, 1.0f);\n"
 "   col = aCol * vec3(sin(time), cos(time), sin(time)) + 0.5;\n"
 "}\0";
@@ -63,6 +65,8 @@ int main(void) {
     // set context to the window just created
 
     glfwMakeContextCurrent(window);
+
+    glfwSwapInterval(0);
 
     // frame resizing
 
@@ -218,6 +222,13 @@ int main(void) {
     // uniforms, used for rotation and color for now
 
     float time;
+    int time_uniform_location = glGetUniformLocation(shader_program, "time");
+
+    // frametime and fps counter timer
+
+    float last_frame_draw = 0.01f;
+    float delta_time = 0.01f;
+    float fps_timer_counter = PRINT_FRAME_TIME_PER_SECONDS;
 
     // begin render loop, check input and swap buffers
 
@@ -229,13 +240,25 @@ int main(void) {
         glClearColor(0.65f, 0.8f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        // get time for shaders and also frametime counter
+
         time = glfwGetTime();
 
-        int frag_time_uniform_location = glGetUniformLocation(shader_program, "time");
+        // frame time counters, print frametime counter every N seconds as specified in define at top
+
+        delta_time = time - last_frame_draw;
+
+        fps_timer_counter -= delta_time;
+
+        if(fps_timer_counter <= 0) {
+            // reset timer
+            fps_timer_counter = PRINT_FRAME_TIME_PER_SECONDS;
+            printf("\nfps : %f - frametime : %f\n", 1.0f / delta_time, delta_time);
+        }
 
         glUseProgram(shader_program);
 
-        glUniform1f(frag_time_uniform_location, time);
+        glUniform1f(time_uniform_location, time);
 
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -243,6 +266,8 @@ int main(void) {
 
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        last_frame_draw = time;
     }
 
     // exit program, if havent exited manually
