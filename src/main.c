@@ -4,6 +4,10 @@
 #include <stdbool.h>
 #include <math.h>
 
+// rhino headers
+
+#include "shaders.h"
+
 #define WINDOW_WIDTH 1000
 #define WINDOW_HEIGHT 960
 
@@ -12,6 +16,8 @@
 #define CAMERA_MOV_SPEED 0.5f
 #define CAMERA_ZOOM_SPEED 1.0f
 #define CAMERA_ROT_SPEED 1.0f
+
+// time between each frame, used for things such as values that change overtime to stay consistent (e.g movement)
 
 float delta_time = 0.01f;
 
@@ -29,9 +35,14 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     printf("\nwindow resized to %dx%d", width, height);
 }
 
+// --- INPUT HANDLING --- //
+
 void input_handling(GLFWwindow* window) {
+    // quick escape
     if(glfwGetKey(window, GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
 
+    /* wasd movement, uses camera velocity of which we then pass into a rotation matrix 
+    so we move up/down/left/right relative to the camera orientation */
     if(glfwGetKey(window, GLFW_KEY_W)) cam_y_vel = CAMERA_MOV_SPEED;
     else if(glfwGetKey(window, GLFW_KEY_S)) cam_y_vel = -CAMERA_MOV_SPEED;
     else cam_y_vel = 0;
@@ -39,11 +50,16 @@ void input_handling(GLFWwindow* window) {
     else if(glfwGetKey(window, GLFW_KEY_A)) cam_x_vel = -CAMERA_MOV_SPEED;
     else cam_x_vel = 0;
 
+    // rotation matrix
+
     camera_x += (cam_x_vel * cos(camera_rot) - cam_y_vel * sin(camera_rot)) * delta_time;
     camera_y += (cam_x_vel * sin(camera_rot) + cam_y_vel * cos(camera_rot)) * delta_time;
 
+    // rotation and zoom
+
     if(glfwGetKey(window, GLFW_KEY_E)) camera_rot += CAMERA_ROT_SPEED * delta_time;
     if(glfwGetKey(window, GLFW_KEY_Q)) camera_rot += -CAMERA_ROT_SPEED * delta_time;
+
     if(glfwGetKey(window, GLFW_KEY_Z)) camera_zoom += -CAMERA_ZOOM_SPEED * delta_time;
     if(glfwGetKey(window, GLFW_KEY_X)) camera_zoom += CAMERA_ZOOM_SPEED * delta_time;
 
@@ -51,40 +67,6 @@ void input_handling(GLFWwindow* window) {
 
     if(camera_zoom <= 0.01f) camera_zoom = 0.01f;
 }
-
-// simple vertex shader, no proces, forward vertex data over unfiltered to next steps in graphics pipeline
-
-const char *vertex_shader_source = "#version 330 core\n"
-"layout (location = 0) in vec3 aPos; \n"
-"layout (location = 1) in vec3 aCol; \n"
-
-"uniform float time;\n"
-"uniform float zoom;\n"
-"uniform float cam_orientation;\n"
-"uniform vec2 cam_position;\n"
-
-"mat2 rot = mat2(cos(cam_orientation), -sin(cam_orientation), sin(cam_orientation), cos(cam_orientation));\n"
-
-"out vec3 col;\n"
-
-"void main()\n"
-"{\n"
-"   vec2 transformed_pos = rot * (aPos.xy - cam_position) * zoom;\n"
-"   gl_Position = vec4(transformed_pos.xy, 0.0, 1.0);\n"
-"   col = aCol * vec3(sin(time), cos(time), sin(time)) + 0.5;\n"
-"}\0";
-
-// fragment shader source
-    
-const char *fragment_shader_source = "#version 330 core\n"
-"in vec3 col;\n"
-
-"out vec4 frag_color;\n"
-
-"void main()\n"
-"{"
-"   frag_color = vec4(col.xyz, 1.0f);\n"
-"}\0";
 
 int main(void) {
     // init opengl, set version and profile (core profile)
@@ -123,9 +105,6 @@ int main(void) {
 
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-
-    // ------------ SHADERS ------------ //
-
     // print info about max number of vertex attribs
 
     int num_attributes;
@@ -134,71 +113,12 @@ int main(void) {
 
     printf("maximum number of vertex attribs : %d", num_attributes);
 
-    // shader object of vertex shader type, store id as vertex_shader as an unsigned int
 
-    unsigned int vertex_shader;
-    vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    // ------------ SHADERS ------------ //
 
-    // compile vertex shader
-
-    glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
-    glCompileShader(vertex_shader);
-
-    // check if shader compilation was successful, print error if not
-
-    int success;
-    char info_log[512];
-
-    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
-
-    if(!success) {
-        glGetShaderInfoLog(vertex_shader, 512, NULL, info_log);
-        printf(info_log);
-    }
-
-    // bind and compile frag shader, same process as vertex shader
-
-    unsigned int fragment_shader;
-
-    fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-
-    glShaderSource(fragment_shader, 1, &fragment_shader_source, NULL);
-    glCompileShader(fragment_shader);
-
-    // check for issues and reuse variables from before
-
-    glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
-
-    if(!success) {
-        glGetShaderInfoLog(fragment_shader, 512, NULL, info_log);
-        printf(info_log);
-    }
-
-    // make shader program
-
-    unsigned int shader_program;
-
-    shader_program = glCreateProgram();
-
-    // link shaders
-
-    glAttachShader(shader_program, vertex_shader);
-    glAttachShader(shader_program, fragment_shader);
-    glLinkProgram(shader_program);
-
-    glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
-
-    if(!success) {
-        glGetProgramInfoLog(shader_program, 512, NULL, info_log);
-        printf(info_log);
-    }
+    unsigned int shader_program = link_and_compile_shaders("vertex_shader.glsl", "fragment_shader.glsl");
 
     glUseProgram(shader_program);
-
-    // delete shader code once done, already compiled and linked in shader program
-    
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
 
 
     // ------- QUAD DEFINE, VBO + VAO ------- //

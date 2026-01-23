@@ -3,7 +3,7 @@ MAKEFLAGS += -j8
 CC = gcc
 LIBS += -lglfw3 -lopengl32 -lgdi32 -luser32
 
-SRC += src/main.c src/glad/glad.c
+SRC += src/main.c src/glad/glad.c src/shaders.c
 
 BIN_DIR = bin
 
