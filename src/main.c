@@ -9,6 +9,18 @@
 
 #define PRINT_FRAME_TIME_PER_SECONDS 1.0f
 
+#define CAMERA_MOV_SPEED 0.5f
+#define CAMERA_ZOOM_SPEED 1.0f
+#define CAMERA_ROT_SPEED 1.0f
+
+float delta_time = 0.01f;
+
+// camera orientation, starts at origin and of no rotation
+
+float camera_rot = 0;
+float camera_x, camera_y = 0;
+float camera_zoom = 1;
+
 // resize gl viewport as window is resized, print debug info also
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -18,6 +30,19 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 
 void input_handling(GLFWwindow* window) {
     if(glfwGetKey(window, GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
+
+    if(glfwGetKey(window, GLFW_KEY_W)) camera_y += CAMERA_MOV_SPEED * delta_time;
+    if(glfwGetKey(window, GLFW_KEY_A)) camera_x -= CAMERA_MOV_SPEED * delta_time;
+    if(glfwGetKey(window, GLFW_KEY_S)) camera_y -= CAMERA_MOV_SPEED * delta_time;
+    if(glfwGetKey(window, GLFW_KEY_D)) camera_x += CAMERA_MOV_SPEED * delta_time;
+    if(glfwGetKey(window, GLFW_KEY_E)) camera_rot += CAMERA_ROT_SPEED * delta_time;
+    if(glfwGetKey(window, GLFW_KEY_Q)) camera_rot += -CAMERA_ROT_SPEED * delta_time;
+    if(glfwGetKey(window, GLFW_KEY_Z)) camera_zoom += -CAMERA_ZOOM_SPEED * delta_time;
+    if(glfwGetKey(window, GLFW_KEY_X)) camera_zoom += CAMERA_ZOOM_SPEED * delta_time;
+
+    // clamp zoom as to not go inverse
+
+    if(camera_zoom <= 0.01f) camera_zoom = 0.01f;
 }
 
 // simple vertex shader, no proces, forward vertex data over unfiltered to next steps in graphics pipeline
@@ -25,12 +50,20 @@ void input_handling(GLFWwindow* window) {
 const char *vertex_shader_source = "#version 330 core\n"
 "layout (location = 0) in vec3 aPos; \n"
 "layout (location = 1) in vec3 aCol; \n"
+
 "uniform float time;\n"
+"uniform float zoom;\n"
+"uniform float cam_orientation;\n"
+"uniform vec2 cam_position;\n"
+
+"mat2 rot = mat2(cos(cam_orientation), -sin(cam_orientation), sin(cam_orientation), cos(cam_orientation));\n"
+
 "out vec3 col;\n"
+
 "void main()\n"
 "{\n"
-"   float rot_spd_mult = -3.14159 / 2;\n" // pi = 180 deg/sec rotation speed
-"   gl_Position = vec4((aPos.x * cos(time * rot_spd_mult)) - (aPos.y * sin(time * rot_spd_mult)), (aPos.x * sin(time * rot_spd_mult)) + (aPos.y * cos(time * rot_spd_mult)), aPos.z, 1.0f);\n"
+"   vec2 transformed_pos = rot * (aPos.xy - cam_position) * zoom;\n"
+"   gl_Position = vec4(transformed_pos.xy, 0.0, 1.0);\n"
 "   col = aCol * vec3(sin(time), cos(time), sin(time)) + 0.5;\n"
 "}\0";
 
@@ -224,10 +257,13 @@ int main(void) {
     float time;
     int time_uniform_location = glGetUniformLocation(shader_program, "time");
 
+    int cam_pos_uniform = glGetUniformLocation(shader_program, "cam_position");
+    int cam_rot_uniform = glGetUniformLocation(shader_program, "cam_orientation");
+    int cam_zoom_uniform = glGetUniformLocation(shader_program, "zoom");
+
     // frametime and fps counter timer
 
     float last_frame_draw = 0.01f;
-    float delta_time = 0.01f;
     float fps_timer_counter = PRINT_FRAME_TIME_PER_SECONDS;
 
     // begin render loop, check input and swap buffers
@@ -259,6 +295,10 @@ int main(void) {
         glUseProgram(shader_program);
 
         glUniform1f(time_uniform_location, time);
+
+        glUniform1f(cam_rot_uniform, camera_rot);
+        glUniform1f(cam_zoom_uniform, camera_zoom);
+        glUniform2f(cam_pos_uniform, camera_x, camera_y);
 
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
