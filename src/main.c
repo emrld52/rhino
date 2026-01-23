@@ -19,6 +19,7 @@ float delta_time = 0.01f;
 
 float camera_rot = 0;
 float camera_x, camera_y = 0;
+float cam_x_vel, cam_y_vel = 0;
 float camera_zoom = 1;
 
 // resize gl viewport as window is resized, print debug info also
@@ -31,10 +32,16 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 void input_handling(GLFWwindow* window) {
     if(glfwGetKey(window, GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
 
-    if(glfwGetKey(window, GLFW_KEY_W)) camera_y += CAMERA_MOV_SPEED * delta_time;
-    if(glfwGetKey(window, GLFW_KEY_A)) camera_x -= CAMERA_MOV_SPEED * delta_time;
-    if(glfwGetKey(window, GLFW_KEY_S)) camera_y -= CAMERA_MOV_SPEED * delta_time;
-    if(glfwGetKey(window, GLFW_KEY_D)) camera_x += CAMERA_MOV_SPEED * delta_time;
+    if(glfwGetKey(window, GLFW_KEY_W)) cam_y_vel = CAMERA_MOV_SPEED;
+    else if(glfwGetKey(window, GLFW_KEY_S)) cam_y_vel = -CAMERA_MOV_SPEED;
+    else cam_y_vel = 0;
+    if(glfwGetKey(window, GLFW_KEY_D)) cam_x_vel = CAMERA_MOV_SPEED;
+    else if(glfwGetKey(window, GLFW_KEY_A)) cam_x_vel = -CAMERA_MOV_SPEED;
+    else cam_x_vel = 0;
+
+    camera_x += (cam_x_vel * cos(camera_rot) - cam_y_vel * sin(camera_rot)) * delta_time;
+    camera_y += (cam_x_vel * sin(camera_rot) + cam_y_vel * cos(camera_rot)) * delta_time;
+
     if(glfwGetKey(window, GLFW_KEY_E)) camera_rot += CAMERA_ROT_SPEED * delta_time;
     if(glfwGetKey(window, GLFW_KEY_Q)) camera_rot += -CAMERA_ROT_SPEED * delta_time;
     if(glfwGetKey(window, GLFW_KEY_Z)) camera_zoom += -CAMERA_ZOOM_SPEED * delta_time;
@@ -71,7 +78,9 @@ const char *vertex_shader_source = "#version 330 core\n"
     
 const char *fragment_shader_source = "#version 330 core\n"
 "in vec3 col;\n"
+
 "out vec4 frag_color;\n"
+
 "void main()\n"
 "{"
 "   frag_color = vec4(col.xyz, 1.0f);\n"
