@@ -179,6 +179,34 @@ int main(void) {
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)(6 * sizeof(GLfloat)));
     glEnableVertexAttribArray(2);
 
+    glBindVertexArray(0);
+
+    // triangle
+
+    unsigned int VBO2, VAO2;
+
+    glGenVertexArrays(1, &VAO2);
+    glBindVertexArray(VAO2);
+
+    float vertices2[] = {
+        0.6f, -0.5f, 0.0f,    1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+        1.1f, 0.5f, 0.0f,     0.0f, 1.0f, 0.0f, 0.5f, 1.0f,
+        1.6f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f, 1.0f, 0.0f
+    };
+
+    glGenBuffers(1, &VBO2);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO2);
+
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices2), vertices2, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)(3 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)(6 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(2);
+
     // unbind
 
     glBindVertexArray(0);
@@ -222,42 +250,36 @@ int main(void) {
         return -1;
     }
 
-    // awesome face texture
+    // crate texture
 
-    unsigned int awesomeface_texture;
-    glGenTextures(1, &awesomeface_texture);
-    glBindTexture(GL_TEXTURE_2D, awesomeface_texture);
+    unsigned int crate_texture;
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glGenTextures(1, &crate_texture);
+    glBindTexture(GL_TEXTURE_2D, crate_texture);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
     
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    stbi_set_flip_vertically_on_load(true);
+    unsigned char* crt_dat = stbi_load("assets\\img\\container.jpg", &width, &height, &channels, 0);
 
-    tex_data = stbi_load("assets/img/awesomeface.png", &width, &height, &channels, 0);
-
-    if(tex_data) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data);
+    if(crt_dat) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, crt_dat);
         glGenerateMipmap(GL_TEXTURE_2D);
 
-        stbi_image_free(tex_data);
+        stbi_image_free(crt_dat);
     }
     else {
-        printf("failed to load texture, exiting program");
+        printf("error loading crate texture, exiting");
         return -1;
     }
-
-    // activate textures
+    
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, pebbles_texture);
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, awesomeface_texture);
-
-    glUniform1i(glGetUniformLocation(shader_program, "texture_sample1"), 0);
-    glUniform1i(glGetUniformLocation(shader_program, "texture_sample2"), 1);
-
+    glBindTexture(GL_TEXTURE_2D, crate_texture);
 
     // --- UNIFORMS --- //
 
@@ -318,7 +340,13 @@ int main(void) {
         // draw quad
 
         glBindVertexArray(VAO);
+        glUniform1i(glGetUniformLocation(shader_program, "texture_sample1"), 0);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        glBindVertexArray(VAO2);
+        glUniform1i(glGetUniformLocation(shader_program, "texture_sample1"), 1);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
         glBindVertexArray(0);
 
         // display
