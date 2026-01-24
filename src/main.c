@@ -11,8 +11,8 @@
 
 #include "shaders.h"
 
-#define WINDOW_WIDTH 1000
-#define WINDOW_HEIGHT 960
+#define WINDOW_WIDTH 2560
+#define WINDOW_HEIGHT 1440
 
 #define PRINT_FRAME_TIME_PER_SECONDS 1.0f
 
@@ -85,7 +85,7 @@ int main(void) {
 
     // init opengl window (fullscreen, change glfwGetPrimaryMonitor to NULL if you so need/desire windowed mode)
 
-    GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Rhino Framework", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Rhino Framework", glfwGetPrimaryMonitor(), NULL);
 
     if (window == NULL) {
         printf("\nfailed to create a glfw window.");
@@ -134,10 +134,10 @@ int main(void) {
     // quad primitive as vertex coordinates
 
     float vertices[] = {
-       -0.5f,  -0.5f,   0.0f, /* bottom left */  1.0f, 1.0f, 0.0f, /* blue */       0.0f, 0.0f,
-        0.5f,  -0.5f,   0.0f, /* bottom right */ 1.0f, 0.0f, 1.0f, /* yellow */     1.0f, 0.0f,
-       -0.5f,   0.5f,   0.0f, /* top left */     0.0f, 1.0f, 1.0f, /* green */      0.0f, 1.0f,
-        0.5f,   0.5f,   0.0f, /* top right */    1.0f, 1.0f, 0.0f, /* red */        1.0f, 1.0f,
+       -0.5f,  -0.5f,   0.01f, /* bottom left */  1.0f, 1.0f, 0.0f, /* blue */       0.0f, 0.0f,
+        0.5f,  -0.5f,   0.5f, /* bottom right */ 1.0f, 0.0f, 1.0f, /* yellow */     1.0f, 0.0f,
+       -0.5f,   0.5f,   0.01f, /* top left */     0.0f, 1.0f, 1.0f, /* green */      0.0f, 1.0f,
+        0.5f,   0.5f,   0.5f, /* top right */    1.0f, 1.0f, 0.0f, /* red */        1.0f, 1.0f,
     };
 
     unsigned int indices[] = {
@@ -183,32 +183,6 @@ int main(void) {
 
     glBindVertexArray(0);
 
-    // 2nd object, triangle, vao + vbo and attrib pointers
-
-    float vertices2[] = {
-        0.75f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,    0.0f, 0.0f,
-        1.25f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f,     0.5f, 1.0f,
-        1.75f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f,    1.0f, 0.0f,
-    };
-
-    unsigned int VBO2, VAO2;
-
-    glGenVertexArrays(1, &VAO2);
-    glBindVertexArray(VAO2);
-
-    glGenBuffers(1, &VBO2);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO2);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices2), vertices2, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)(3 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)(6 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(2);
-
-
     // --- TEXTURES --- //
 
 
@@ -222,14 +196,8 @@ int main(void) {
     // textures, set textures to perform a mirrored repeat when exceeding past 0 - 1 tex coords on x axis
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-
-    // on the y axis, exceeding uv space will clamp the texture (no tiling or repeating) and will pass in a singular pinkish color to set on the y axis
-
-    float border_color[] = {0.8f, 0.4f, 0.4f, 1.0f};
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border_color);
-
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+    
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -316,10 +284,6 @@ int main(void) {
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
-        glBindVertexArray(VAO2);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        glBindVertexArray(0);
-
         glfwSwapBuffers(window);
         glfwPollEvents();
 
@@ -329,9 +293,7 @@ int main(void) {
     // exit program, if havent exited manually
 
     glDeleteVertexArrays(1, &VAO);
-    glDeleteVertexArrays(1, &VAO2);
     glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &VBO2);
     glDeleteBuffers(1, &EBO);
     glDeleteProgram(shader_program);
     glDeleteTextures(1, &pebbles_texture);
