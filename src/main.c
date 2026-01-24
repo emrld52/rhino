@@ -11,8 +11,8 @@
 
 #include "shaders.h"
 
-#define WINDOW_WIDTH 2560
-#define WINDOW_HEIGHT 1440
+#define WINDOW_WIDTH 1024
+#define WINDOW_HEIGHT 1024
 
 #define PRINT_FRAME_TIME_PER_SECONDS 1.0f
 
@@ -85,7 +85,7 @@ int main(void) {
 
     // init opengl window (fullscreen, change glfwGetPrimaryMonitor to NULL if you so need/desire windowed mode)
 
-    GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Rhino Framework", glfwGetPrimaryMonitor(), NULL);
+    GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Rhino Framework", NULL, NULL);
 
     if (window == NULL) {
         printf("\nfailed to create a glfw window.");
@@ -134,10 +134,10 @@ int main(void) {
     // quad primitive as vertex coordinates
 
     float vertices[] = {
-       -0.5f,  -0.5f,   0.01f, /* bottom left */  1.0f, 1.0f, 0.0f, /* blue */       0.0f, 0.0f,
-        0.5f,  -0.5f,   0.5f, /* bottom right */ 1.0f, 0.0f, 1.0f, /* yellow */     1.0f, 0.0f,
-       -0.5f,   0.5f,   0.01f, /* top left */     0.0f, 1.0f, 1.0f, /* green */      0.0f, 1.0f,
-        0.5f,   0.5f,   0.5f, /* top right */    1.0f, 1.0f, 0.0f, /* red */        1.0f, 1.0f,
+       -0.5f,  -0.5f,   0.0f, /* bottom left */  1.0f, 1.0f, 0.0f, /* blue */       0.0f, 0.0f,
+        0.5f,  -0.5f,   0.0f, /* bottom right */ 1.0f, 0.0f, 1.0f, /* yellow */     2.0f, 0.0f,
+       -0.5f,   0.5f,   0.0f, /* top left */     0.0f, 1.0f, 1.0f, /* green */      0.0f, 2.0f,
+        0.5f,   0.5f,   0.0f, /* top right */    1.0f, 1.0f, 0.0f, /* red */        2.0f, 2.0f,
     };
 
     unsigned int indices[] = {
@@ -190,7 +190,6 @@ int main(void) {
 
     unsigned int pebbles_texture;
     glGenTextures(1, &pebbles_texture);
-
     glBindTexture(GL_TEXTURE_2D, pebbles_texture);
 
     // textures, set textures to perform a mirrored repeat when exceeding past 0 - 1 tex coords on x axis
@@ -204,24 +203,60 @@ int main(void) {
     // load image with stb image
 
     int width, height, channels;
-    unsigned char* peb_tex_data = stbi_load("assets/img/pebbles.jpg", &width, &height, &channels, 0);
+    unsigned char* tex_data = stbi_load("assets/img/pebbles.jpg", &width, &height, &channels, 0);
 
     // quick error check, if image couldnt load then exit the applicaiton
 
-    if(peb_tex_data) {
+    if(tex_data) {
         // pass texture into gpu memory and generate mipmap
 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, peb_tex_data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, tex_data);
         glGenerateMipmap(GL_TEXTURE_2D);
 
         // image has been loaded into gpu and mipmaps have been generated, no longer needs to be stored in main ram, free the image from ram
 
-        stbi_image_free(peb_tex_data);
+        stbi_image_free(tex_data);
     }
     else {
         printf("failed to load texture, exiting program");
         return -1;
     }
+
+    // awesome face texture
+
+    unsigned int awesomeface_texture;
+    glGenTextures(1, &awesomeface_texture);
+    glBindTexture(GL_TEXTURE_2D, awesomeface_texture);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    stbi_set_flip_vertically_on_load(true);
+
+    tex_data = stbi_load("assets/img/awesomeface.png", &width, &height, &channels, 0);
+
+    if(tex_data) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        stbi_image_free(tex_data);
+    }
+    else {
+        printf("failed to load texture, exiting program");
+        return -1;
+    }
+
+    // activate textures
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, pebbles_texture);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, awesomeface_texture);
+
+    glUniform1i(glGetUniformLocation(shader_program, "texture_sample1"), 0);
+    glUniform1i(glGetUniformLocation(shader_program, "texture_sample2"), 1);
 
 
     // --- UNIFORMS --- //
@@ -271,7 +306,7 @@ int main(void) {
 
         glUseProgram(shader_program);
 
-        glBindTexture(GL_TEXTURE_2D, pebbles_texture);
+        // pass in shader uniforms
 
         glUniform1f(time_uniform_location, time);
 
@@ -280,9 +315,13 @@ int main(void) {
         glUniform2f(cam_pos_uniform, camera_x, camera_y);
         glUniform1i(toggle_effect, toggle_crazy_shaders);
 
+        // draw quad
+
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
+
+        // display
 
         glfwSwapBuffers(window);
         glfwPollEvents();
