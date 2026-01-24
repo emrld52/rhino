@@ -5,18 +5,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-// fragment shader source
-    
-const char *fragment_shader_source = "#version 330 core\n"
-"in vec3 col;\n"
-
-"out vec4 frag_color;\n"
-
-"void main()\n"
-"{"
-"   frag_color = vec4(col.xyz, 1.0f);\n"
-"}\0";
-
 // returns unsigned int to shader program
 
 unsigned int link_and_compile_shaders(char* vertex_path, char* fragment_path) {
@@ -25,8 +13,6 @@ unsigned int link_and_compile_shaders(char* vertex_path, char* fragment_path) {
     int success;
 
     char error_log[512];
-
-    long length;
 
     // read shader file, load into memory, due to weird opengl shenanigans convert to const char * const * later on
 
@@ -42,6 +28,25 @@ unsigned int link_and_compile_shaders(char* vertex_path, char* fragment_path) {
         vert_shader_source[i] = malloc(256);
         memcpy(vert_shader_source[i], temp, 256);
         i++;
+    }
+
+    fclose(pF);
+
+    // same for frag shader
+
+    FILE* pF2 = fopen(fragment_path, "r");
+    fseek(pF2, 0, SEEK_SET);
+
+    int j = 0;
+
+    char frag_temp[256];
+
+    char* frag_shader_source[1024];
+
+    while(fgets(frag_temp, sizeof(frag_temp), pF2)) {
+        frag_shader_source[j] = malloc(256);
+        memcpy(frag_shader_source[j], frag_temp, 256);
+        j++;
     }
 
     // --- VERTEX SHADER --- //
@@ -66,7 +71,7 @@ unsigned int link_and_compile_shaders(char* vertex_path, char* fragment_path) {
 
     fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
 
-    glShaderSource(fragment_shader, 1, &fragment_shader_source, NULL);
+    glShaderSource(fragment_shader, j, (const char * const *)frag_shader_source, NULL);
     glCompileShader(fragment_shader);
 
     glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);

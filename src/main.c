@@ -4,6 +4,9 @@
 #include <stdbool.h>
 #include <math.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "libs/stb_image.h"
+
 // rhino headers
 
 #include "shaders.h"
@@ -28,6 +31,8 @@ float camera_x, camera_y = 0;
 float cam_x_vel, cam_y_vel = 0;
 float camera_zoom = 1;
 
+bool toggle_crazy_shaders = false;
+
 // resize gl viewport as window is resized, print debug info also
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -40,6 +45,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 void input_handling(GLFWwindow* window) {
     // quick escape
     if(glfwGetKey(window, GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
+
+    if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS) toggle_crazy_shaders = !toggle_crazy_shaders;
 
     /* wasd movement, uses camera velocity of which we then pass into a rotation matrix 
     so we move up/down/left/right relative to the camera orientation */
@@ -127,10 +134,10 @@ int main(void) {
     // quad primitive as vertex coordinates
 
     float vertices[] = {
-       -0.5f,  -0.5f,   0.0f, /* bottom left */  1.0f, 1.0f, 0.0f, /* blue */
-        0.5f,  -0.5f,   0.0f, /* bottom right */ 1.0f, 0.0f, 1.0f, /* yellow */
-       -0.5f,   0.5f,   0.0f, /* top left */     0.0f, 1.0f, 1.0f, /* green */
-        0.5f,   0.5f,   0.0f, /* top right */    1.0f, 1.0f, 0.0f, /* red */
+       -0.5f,  -0.5f,   0.0f, /* bottom left */  1.0f, 1.0f, 0.0f, /* blue */       0.0f, 0.0f,
+        0.5f,  -0.5f,   0.0f, /* bottom right */ 1.0f, 0.0f, 1.0f, /* yellow */     1.0f, 0.0f,
+       -0.5f,   0.5f,   0.0f, /* top left */     0.0f, 1.0f, 1.0f, /* green */      0.0f, 1.0f,
+        0.5f,   0.5f,   0.0f, /* top right */    1.0f, 1.0f, 0.0f, /* red */        1.0f, 1.0f,
     };
 
     unsigned int indices[] = {
@@ -143,11 +150,6 @@ int main(void) {
     unsigned int VBO;
 
     glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-    // allocate memory and copy vertices into gpu memory
-
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     // create ebo
 
@@ -162,7 +164,7 @@ int main(void) {
 
     glBindVertexArray(VAO);
 
-    // bind vbo and ebo
+    // bind vbo and ebo, allocate memory and copy vertices and indices into gpu memory
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
@@ -170,10 +172,12 @@ int main(void) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (GLvoid*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (GLvoid*)(3 * sizeof(GLfloat)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)(3 * sizeof(GLfloat)));
     glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)(6 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(2);
 
     // unbind
 
@@ -182,9 +186,9 @@ int main(void) {
     // 2nd object, triangle, vao + vbo and attrib pointers
 
     float vertices2[] = {
-        0.75f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
-        1.25f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
-        1.75f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f,
+        0.75f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,    0.0f, 0.0f,
+        1.25f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f,     0.5f, 1.0f,
+        1.75f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f,    1.0f, 0.0f,
     };
 
     unsigned int VBO2, VAO2;
@@ -197,10 +201,63 @@ int main(void) {
     glBindBuffer(GL_ARRAY_BUFFER, VBO2);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices2), vertices2, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (GLvoid*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (GLvoid*)(3 * sizeof(GLfloat)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)(3 * sizeof(GLfloat)));
     glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)(6 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(2);
+
+
+    // --- TEXTURES --- //
+
+
+    // generate texture object in gpu memory and id
+
+    unsigned int pebbles_texture;
+    glGenTextures(1, &pebbles_texture);
+
+    glBindTexture(GL_TEXTURE_2D, pebbles_texture);
+
+    // textures, set textures to perform a mirrored repeat when exceeding past 0 - 1 tex coords on x axis
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+
+    // on the y axis, exceeding uv space will clamp the texture (no tiling or repeating) and will pass in a singular pinkish color to set on the y axis
+
+    float border_color[] = {0.8f, 0.4f, 0.4f, 1.0f};
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border_color);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // load image with stb image
+
+    int width, height, channels;
+    unsigned char* peb_tex_data = stbi_load("assets/img/pebbles.jpg", &width, &height, &channels, 0);
+
+    // quick error check, if image couldnt load then exit the applicaiton
+
+    if(peb_tex_data) {
+        // pass texture into gpu memory and generate mipmap
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, peb_tex_data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        // image has been loaded into gpu and mipmaps have been generated, no longer needs to be stored in main ram, free the image from ram
+
+        stbi_image_free(peb_tex_data);
+    }
+    else {
+        printf("failed to load texture, exiting program");
+        return -1;
+    }
+
+
+    // --- UNIFORMS --- //
+
 
     // uniforms, used for rotation and color for now
 
@@ -210,6 +267,8 @@ int main(void) {
     int cam_pos_uniform = glGetUniformLocation(shader_program, "cam_position");
     int cam_rot_uniform = glGetUniformLocation(shader_program, "cam_orientation");
     int cam_zoom_uniform = glGetUniformLocation(shader_program, "zoom");
+
+    int toggle_effect = glGetUniformLocation(shader_program, "toggle_effect");
 
     // frametime and fps counter timer
 
@@ -244,11 +303,14 @@ int main(void) {
 
         glUseProgram(shader_program);
 
+        glBindTexture(GL_TEXTURE_2D, pebbles_texture);
+
         glUniform1f(time_uniform_location, time);
 
         glUniform1f(cam_rot_uniform, camera_rot);
         glUniform1f(cam_zoom_uniform, camera_zoom);
         glUniform2f(cam_pos_uniform, camera_x, camera_y);
+        glUniform1i(toggle_effect, toggle_crazy_shaders);
 
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -267,9 +329,12 @@ int main(void) {
     // exit program, if havent exited manually
 
     glDeleteVertexArrays(1, &VAO);
+    glDeleteVertexArrays(1, &VAO2);
     glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &VBO2);
     glDeleteBuffers(1, &EBO);
     glDeleteProgram(shader_program);
+    glDeleteTextures(1, &pebbles_texture);
 
     glfwTerminate();
 
