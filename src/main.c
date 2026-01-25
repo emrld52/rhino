@@ -29,6 +29,16 @@ float time;
 
 float width, height;
 
+struct camera_transform {
+    vec3 posititon;
+    vec3 velocity;
+    float mov_speed;
+    float rotation_speed;
+    float yaw, pitch, roll;
+};
+
+struct camera_transform cam;
+
 // resize gl viewport as window is resized, print debug info also
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -41,8 +51,42 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 // --- INPUT HANDLING --- //
 
 void input_handling(GLFWwindow* window) {
+    if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) cam.mov_speed = 4.0f;
+    else cam.mov_speed = 2.0f;
+
+    cam.rotation_speed = glm_rad(180.0f);
+
     // quick escape
     if(glfwGetKey(window, GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
+
+    if(glfwGetKey(window, GLFW_KEY_W)) cam.velocity[2] = -cam.mov_speed;
+    else if(glfwGetKey(window, GLFW_KEY_S)) cam.velocity[2] = cam.mov_speed;
+    else cam.velocity[2] = 0;
+
+    if(glfwGetKey(window, GLFW_KEY_D)) cam.velocity[0] = cam.mov_speed;
+    else if(glfwGetKey(window, GLFW_KEY_A)) cam.velocity[0] = -cam.mov_speed;
+    else cam.velocity[0] = 0;
+
+    if(glfwGetKey(window, GLFW_KEY_RIGHT)) cam.yaw -= cam.rotation_speed * delta_time;
+    else if(glfwGetKey(window, GLFW_KEY_LEFT)) cam.yaw += cam.rotation_speed * delta_time;
+
+    if(glfwGetKey(window, GLFW_KEY_UP)) cam.roll -= cam.rotation_speed * delta_time;
+    else if(glfwGetKey(window, GLFW_KEY_DOWN)) cam.roll += cam.rotation_speed * delta_time;
+
+    if(glfwGetKey(window, GLFW_KEY_LEFT_CONTROL)) cam.posititon[1] -= cam.mov_speed * delta_time;
+    else if(glfwGetKey(window, GLFW_KEY_SPACE)) cam.posititon[1] += cam.mov_speed * delta_time;
+
+    mat4 rotate_axes;
+
+    glm_mat4_identity(rotate_axes);
+
+    glm_rotate(rotate_axes, cam.yaw, (vec3){0, 1, 0});
+
+    glm_mat4_mulv3(rotate_axes, cam.velocity, 1.0f, cam.velocity);
+
+    glm_vec3_mul(cam.velocity, (vec3){delta_time, delta_time, delta_time}, cam.velocity);
+
+    glm_vec3_add(cam.posititon, cam.velocity, cam.posititon);
 }
 
 int main(void) {
@@ -285,12 +329,11 @@ int main(void) {
 
     glEnable(GL_DEPTH_TEST);
 
+    // randomly generate a ton of cubes
+
     vec3 cube_positions[20];
 
     glm_vec3((vec4){0.0f, 0.0f, 0.0f, 1.0f}, cube_positions[0]);
-    glm_vec3((vec4){0.5f, -0.5f, -6.0f, 1.0f}, cube_positions[1]);
-    glm_vec3((vec4){5.0f, 4.5f, -10.0f, 1.0f}, cube_positions[2]);
-    glm_vec3((vec4){-5.0f, 0.5f, -12.0f, 1.0f}, cube_positions[3]);
 
     for(int i = 1; i < 20; i++) {
         glm_vec3((vec4){(float)(rand() % 10), (float)(rand() % 10), (float)(rand() % 10) * -1, 1.0f}, cube_positions[i]);
@@ -315,10 +358,13 @@ int main(void) {
         glUniformMatrix4fv(proj_loc, 1, GL_FALSE, (float*)proj);
 
         glm_mat4_identity(view);
-        glm_translate(view, (vec3){0.0f, 0.0f, -3.0f});
-        glm_rotate(view, glm_rad(50.0f) * sin(time), (vec3){0, 0, 1});
+        glm_rotate(view, cam.roll, (vec3){1, 0, 0});
+        glm_rotate(view, -cam.yaw, (vec3){0, 1, 0});
+        glm_translate(view, (vec3){0.0f - cam.posititon[0], 0.0f - cam.posititon[1], -3.0f - cam.posititon[2]});
 
         glUniformMatrix4fv(view_loc, 1, GL_FALSE, (float*)view);
+
+        glUniform4f(glGetUniformLocation(shader_program, "playerpos"), cam.posititon[0], cam.posititon[1], cam.posititon[2], 1.0f);
 
         for(int i = 0; i < 20; i++) {
             glm_mat4_identity(model);
