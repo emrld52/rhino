@@ -7,6 +7,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "libs/stb_image.h"
 
+#include "libs/cglm/cglm.h"
+
 // rhino headers
 
 #include "shaders.h"
@@ -23,15 +25,7 @@
 // time between each frame, used for things such as values that change overtime to stay consistent (e.g movement)
 
 float delta_time = 0.01f;
-
-// camera orientation, starts at origin and of no rotation
-
-float camera_rot = 0;
-float camera_x, camera_y = 0;
-float cam_x_vel, cam_y_vel = 0;
-float camera_zoom = 1;
-
-bool toggle_crazy_shaders = false;
+float time;
 
 // resize gl viewport as window is resized, print debug info also
 
@@ -45,34 +39,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 void input_handling(GLFWwindow* window) {
     // quick escape
     if(glfwGetKey(window, GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
-
-    if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS) toggle_crazy_shaders = !toggle_crazy_shaders;
-
-    /* wasd movement, uses camera velocity of which we then pass into a rotation matrix 
-    so we move up/down/left/right relative to the camera orientation */
-    if(glfwGetKey(window, GLFW_KEY_W)) cam_y_vel = CAMERA_MOV_SPEED;
-    else if(glfwGetKey(window, GLFW_KEY_S)) cam_y_vel = -CAMERA_MOV_SPEED;
-    else cam_y_vel = 0;
-    if(glfwGetKey(window, GLFW_KEY_D)) cam_x_vel = CAMERA_MOV_SPEED;
-    else if(glfwGetKey(window, GLFW_KEY_A)) cam_x_vel = -CAMERA_MOV_SPEED;
-    else cam_x_vel = 0;
-
-    // rotation matrix
-
-    camera_x += (cam_x_vel * cos(camera_rot) - cam_y_vel * sin(camera_rot)) * delta_time;
-    camera_y += (cam_x_vel * sin(camera_rot) + cam_y_vel * cos(camera_rot)) * delta_time;
-
-    // rotation and zoom
-
-    if(glfwGetKey(window, GLFW_KEY_E)) camera_rot += -CAMERA_ROT_SPEED * delta_time;
-    if(glfwGetKey(window, GLFW_KEY_Q)) camera_rot += CAMERA_ROT_SPEED * delta_time;
-
-    if(glfwGetKey(window, GLFW_KEY_Z)) camera_zoom += CAMERA_ZOOM_SPEED * delta_time;
-    if(glfwGetKey(window, GLFW_KEY_X)) camera_zoom += -CAMERA_ZOOM_SPEED * delta_time;
-
-    // clamp zoom as to not go inverse
-
-    if(camera_zoom <= 0.01f) camera_zoom = 0.01f;
 }
 
 int main(void) {
@@ -134,10 +100,10 @@ int main(void) {
     // quad primitive as vertex coordinates
 
     float vertices[] = {
-       -0.5f,  -0.5f,   0.0f, /* bottom left */  1.0f, 1.0f, 0.0f, /* blue */       0.0f, 0.0f,
-        0.5f,  -0.5f,   0.0f, /* bottom right */ 1.0f, 0.0f, 1.0f, /* yellow */     2.0f, 0.0f,
-       -0.5f,   0.5f,   0.0f, /* top left */     0.0f, 1.0f, 1.0f, /* green */      0.0f, 2.0f,
-        0.5f,   0.5f,   0.0f, /* top right */    1.0f, 1.0f, 0.0f, /* red */        2.0f, 2.0f,
+       -0.5f,  -0.5f,   0.0f, /* bottom left */     0.0f, 0.0f,
+        0.5f,  -0.5f,   0.0f, /* bottom right */    2.0f, 0.0f,
+       -0.5f,   0.5f,   0.0f, /* top left */        0.0f, 2.0f,
+        0.5f,   0.5f,   0.0f, /* top right */       2.0f, 2.0f
     };
 
     unsigned int indices[] = {
@@ -172,44 +138,17 @@ int main(void) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (GLvoid*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)(3 * sizeof(GLfloat)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (GLvoid*)(3 * sizeof(GLfloat)));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)(6 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(2);
 
     glBindVertexArray(0);
-
-    // triangle
-
-    unsigned int VBO2, VAO2;
-
-    glGenVertexArrays(1, &VAO2);
-    glBindVertexArray(VAO2);
-
-    float vertices2[] = {
-        0.6f, -0.5f, 0.0f,    1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-        1.1f, 0.5f, 0.0f,     0.0f, 1.0f, 0.0f, 0.5f, 1.0f,
-        1.6f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f, 1.0f, 0.0f
-    };
-
-    glGenBuffers(1, &VBO2);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO2);
-
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices2), vertices2, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)(3 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (GLvoid*)(6 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(2);
 
     // unbind
 
     glBindVertexArray(0);
+
 
     // --- TEXTURES --- //
 
@@ -250,7 +189,12 @@ int main(void) {
         return -1;
     }
 
+
+
     // crate texture
+
+
+
 
     unsigned int crate_texture;
 
@@ -281,24 +225,22 @@ int main(void) {
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, crate_texture);
 
-    // --- UNIFORMS --- //
-
-
-    // uniforms, used for rotation and color for now
-
-    float time;
-    int time_uniform_location = glGetUniformLocation(shader_program, "time");
-
-    int cam_pos_uniform = glGetUniformLocation(shader_program, "cam_position");
-    int cam_rot_uniform = glGetUniformLocation(shader_program, "cam_orientation");
-    int cam_zoom_uniform = glGetUniformLocation(shader_program, "zoom");
-
-    int toggle_effect = glGetUniformLocation(shader_program, "toggle_effect");
-
     // frametime and fps counter timer
 
     float last_frame_draw = 0.01f;
     float fps_timer_counter = PRINT_FRAME_TIME_PER_SECONDS;
+
+    // CGLM TEST
+
+    mat4 trans;
+
+    glm_mat4_identity(trans);
+
+    glm_rotate(trans, glm_rad(90.0f), (vec3){0, 0, 1});
+    glm_scale(trans, (vec3){0.5f, 0.5f, 0.5f});
+
+    unsigned int transformation_matrix_loc = glGetUniformLocation(shader_program, "transform");
+    glUniformMatrix4fv(transformation_matrix_loc, 1, GL_FALSE, (float *)trans);
 
     // begin render loop, check input and swap buffers
 
@@ -328,25 +270,11 @@ int main(void) {
 
         glUseProgram(shader_program);
 
-        // pass in shader uniforms
-
-        glUniform1f(time_uniform_location, time);
-
-        glUniform1f(cam_rot_uniform, camera_rot);
-        glUniform1f(cam_zoom_uniform, camera_zoom);
-        glUniform2f(cam_pos_uniform, camera_x, camera_y);
-        glUniform1i(toggle_effect, toggle_crazy_shaders);
-
         // draw quad
 
         glBindVertexArray(VAO);
         glUniform1i(glGetUniformLocation(shader_program, "texture_sample1"), 0);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
-
-        glBindVertexArray(VAO2);
-        glUniform1i(glGetUniformLocation(shader_program, "texture_sample1"), 1);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
         glBindVertexArray(0);
 
         // display
