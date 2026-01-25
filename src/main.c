@@ -27,6 +27,15 @@
 float delta_time = 0.01f;
 float time;
 
+struct cam_t {
+    vec4 position;
+    vec4 desired_direction;
+    float rotation;
+    float zoom;
+};
+
+struct cam_t camera;
+
 // resize gl viewport as window is resized, print debug info also
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -39,6 +48,33 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 void input_handling(GLFWwindow* window) {
     // quick escape
     if(glfwGetKey(window, GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
+
+    if(glfwGetKey(window, GLFW_KEY_W)) camera.desired_direction[1] = 1;
+    else if(glfwGetKey(window, GLFW_KEY_S)) camera.desired_direction[1] = -1;
+    else camera.desired_direction[1] = 0;
+    if(glfwGetKey(window, GLFW_KEY_D)) camera.desired_direction[0] = 1;
+    else if(glfwGetKey(window, GLFW_KEY_A)) camera.desired_direction[0] = -1;
+    else camera.desired_direction[0] = 0;
+
+    if(glfwGetKey(window, GLFW_KEY_Q)) camera.rotation += (CGLM_PI * 2) * delta_time;
+    else if(glfwGetKey(window, GLFW_KEY_E)) camera.rotation -= (CGLM_PI * 2) * delta_time;
+
+    if(glfwGetKey(window, GLFW_KEY_Z)) camera.zoom += 2 * delta_time;
+    else if(glfwGetKey(window, GLFW_KEY_X)) camera.zoom -= 2 * delta_time;
+
+    if(camera.zoom <= 0.1f) camera.zoom = 0.1f;
+
+    mat4 rotate_desired_input;
+
+    glm_mat4_identity(rotate_desired_input);
+
+    glm_rotate(rotate_desired_input, -camera.rotation, (vec3){0, 0, 1});
+    glm_mat4_mulv(rotate_desired_input, camera.desired_direction, camera.desired_direction);
+
+    // multiply by delta time
+
+    glm_vec4_mul(camera.desired_direction, (vec4){delta_time, delta_time, delta_time, 1.0f}, camera.desired_direction);
+    glm_vec4_add(camera.position, camera.desired_direction, camera.position);
 }
 
 int main(void) {
@@ -274,8 +310,10 @@ int main(void) {
         mat4 transform_matrix;
 
         glm_mat4_identity(transform_matrix);
+        glm_scale(transform_matrix, (vec3){camera.zoom, camera.zoom, 1.0f});
+        glm_rotate(transform_matrix, camera.rotation, (vec3){0, 0, 1});
+        glm_translate(transform_matrix, (vec3){-camera.position[0], -camera.position[1], 0.0f});
         glm_rotate(transform_matrix, glm_rad(180.0f * time), (vec3){0, 0, 1});
-        glm_translate(transform_matrix, (vec3){0.5f, -0.5f, 0.0f});
         glm_scale(transform_matrix, (vec3){0.5f, 0.5f, 1.0f});
 
         glUniformMatrix4fv(transformation_matrix_loc, 1, GL_FALSE, (float *)transform_matrix);
@@ -288,9 +326,13 @@ int main(void) {
         glBindVertexArray(0);
 
         glm_mat4_identity(transform_matrix);
-        glm_translate(transform_matrix, (vec3){0.5f, -0.5f, 0.0f});
-        glm_rotate(transform_matrix, glm_rad(180.0f * time), (vec3){0, 0, 1});
-        glm_scale(transform_matrix, (vec3){sin(time), sin(time), 1.0f});
+        glm_scale(transform_matrix, (vec3){camera.zoom, camera.zoom, 1.0f});
+        glm_rotate(transform_matrix, camera.rotation, (vec3){0, 0, 1});
+        glm_translate(transform_matrix, (vec3){-camera.position[0], -camera.position[1], 0.0f});
+        glm_rotate(transform_matrix, glm_rad(-180.0f * time), (vec3){0, 0, 1});
+        glm_translate(transform_matrix, (vec3){1.0f, 1.0f, 0.0f});
+        glm_rotate(transform_matrix, glm_rad(-180.0f * time), (vec3){0, 0, 1});
+        glm_scale(transform_matrix, (vec3){0.5f, 0.5f, 1.0f});
 
         glUniformMatrix4fv(transformation_matrix_loc, 1, GL_FALSE, (float *)transform_matrix);
 
