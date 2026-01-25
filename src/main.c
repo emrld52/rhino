@@ -290,7 +290,7 @@ int main(void) {
         glm_mat4_identity(transform_matrix);
         glm_translate(transform_matrix, (vec3){0.5f, -0.5f, 0.0f});
         glm_rotate(transform_matrix, glm_rad(180.0f * time), (vec3){0, 0, 1});
-        glm_scale(transform_matrix, (vec3){0.5f, 0.5f, 1.0f});
+        glm_scale(transform_matrix, (vec3){sin(time), sin(time), 1.0f});
 
         glUniformMatrix4fv(transformation_matrix_loc, 1, GL_FALSE, (float *)transform_matrix);
 
