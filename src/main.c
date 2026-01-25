@@ -101,9 +101,9 @@ int main(void) {
 
     float vertices[] = {
        -0.5f,  -0.5f,   0.0f, /* bottom left */     0.0f, 0.0f,
-        0.5f,  -0.5f,   0.0f, /* bottom right */    2.0f, 0.0f,
-       -0.5f,   0.5f,   0.0f, /* top left */        0.0f, 2.0f,
-        0.5f,   0.5f,   0.0f, /* top right */       2.0f, 2.0f
+        0.5f,  -0.5f,   0.0f, /* bottom right */    1.0f, 0.0f,
+       -0.5f,   0.5f,   0.0f, /* top left */        0.0f, 1.0f,
+        0.5f,   0.5f,   0.0f, /* top right */       1.0f, 1.0f
     };
 
     unsigned int indices[] = {
@@ -113,21 +113,15 @@ int main(void) {
 
     // create buffer object of gl_array_buffer type and bind to gpu with id
 
-    unsigned int VBO;
+    unsigned int VBO, EBO;
 
     glGenBuffers(1, &VBO);
-
-    // create ebo
-
-    unsigned int EBO;
-
     glGenBuffers(1, &EBO);
 
     // generate a vao (vertex array object)
 
     unsigned int VAO;
     glGenVertexArrays(1, &VAO);
-
     glBindVertexArray(VAO);
 
     // bind vbo and ebo, allocate memory and copy vertices and indices into gpu memory
@@ -143,11 +137,29 @@ int main(void) {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (GLvoid*)(3 * sizeof(GLfloat)));
     glEnableVertexAttribArray(1);
 
-    glBindVertexArray(0);
-
     // unbind
 
     glBindVertexArray(0);
+
+    unsigned int VBO2, EBO2, VAO2;
+
+    glGenVertexArrays(1, &VAO2);
+    glBindVertexArray(VAO2);
+
+    glGenBuffers(1, &VBO2);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO2);
+
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &EBO2);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO2);
+
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (GLvoid*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (GLvoid*)(3 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(1);
 
 
     // --- TEXTURES --- //
@@ -161,8 +173,8 @@ int main(void) {
 
     // textures, set textures to perform a mirrored repeat when exceeding past 0 - 1 tex coords on x axis
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -188,13 +200,6 @@ int main(void) {
         printf("failed to load texture, exiting program");
         return -1;
     }
-
-
-
-    // crate texture
-
-
-
 
     unsigned int crate_texture;
 
@@ -232,17 +237,11 @@ int main(void) {
 
     // CGLM TEST
 
-    mat4 trans;
-
-    glm_mat4_identity(trans);
-
-    glm_rotate(trans, glm_rad(90.0f), (vec3){0, 0, 1});
-    glm_scale(trans, (vec3){0.5f, 0.5f, 0.5f});
-
     unsigned int transformation_matrix_loc = glGetUniformLocation(shader_program, "transform");
-    glUniformMatrix4fv(transformation_matrix_loc, 1, GL_FALSE, (float *)trans);
+
 
     // begin render loop, check input and swap buffers
+
 
     while(!glfwWindowShouldClose(window)) {
         // read any input, used to exit program if forced
@@ -270,9 +269,32 @@ int main(void) {
 
         glUseProgram(shader_program);
 
+        // rebuild matrix every frame and apply position, rotation, and scale
+
+        mat4 transform_matrix;
+
+        glm_mat4_identity(transform_matrix);
+        glm_rotate(transform_matrix, glm_rad(180.0f * time), (vec3){0, 0, 1});
+        glm_translate(transform_matrix, (vec3){0.5f, -0.5f, 0.0f});
+        glm_scale(transform_matrix, (vec3){0.5f, 0.5f, 1.0f});
+
+        glUniformMatrix4fv(transformation_matrix_loc, 1, GL_FALSE, (float *)transform_matrix);
+
         // draw quad
 
         glBindVertexArray(VAO);
+        glUniform1i(glGetUniformLocation(shader_program, "texture_sample1"), 0);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        glm_mat4_identity(transform_matrix);
+        glm_translate(transform_matrix, (vec3){0.5f, -0.5f, 0.0f});
+        glm_rotate(transform_matrix, glm_rad(180.0f * time), (vec3){0, 0, 1});
+        glm_scale(transform_matrix, (vec3){0.5f, 0.5f, 1.0f});
+
+        glUniformMatrix4fv(transformation_matrix_loc, 1, GL_FALSE, (float *)transform_matrix);
+
+        glBindVertexArray(VAO2);
         glUniform1i(glGetUniformLocation(shader_program, "texture_sample1"), 0);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
