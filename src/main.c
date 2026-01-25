@@ -129,6 +129,10 @@ int main(void) {
 
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
+    // disable vsync
+
+    glfwSwapInterval(0);
+
     // print info about max number of vertex attribs
 
     int num_attributes;

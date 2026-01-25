@@ -4,7 +4,5 @@ bin/bin.zip
 .vscode/tasks.json
 bin/vertex_shader.glsl
 bin/fragment_shader.glsl
-vertex_shader.glsl
-fragment_shader.glsl
 bin/pebbles.jpg
 bin/awesomeface.png
