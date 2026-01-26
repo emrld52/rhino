@@ -183,6 +183,8 @@ int main(void) {
         return -1;
     }
 
+    glfwSwapInterval(0);
+
     // pass dimensions into opengl viewport
 
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
