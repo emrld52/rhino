@@ -1,10 +1,11 @@
+// includes
+
 #include "glad/glad.h"
 #include <GLFW/glfw3.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <math.h>
 
-#define STB_IMAGE_IMPLEMENTATION
 #include "libs/stb_image.h"
 
 #include "libs/cglm/cglm.h"
@@ -12,15 +13,29 @@
 // rhino headers
 
 #include "shaders.h"
+#include "textures.h"
+
+// window dimensions
 
 #define WINDOW_WIDTH 1024
 #define WINDOW_HEIGHT 1024
 
-#define PRINT_FRAME_TIME_PER_SECONDS 1.0f
+// camera stuff for allowing the navigation of 3d space
 
-#define CAMERA_MOV_SPEED 0.5f
-#define CAMERA_ZOOM_SPEED 1.0f
-#define CAMERA_ROT_SPEED 1.0f
+#define CAMERA_MOV_SPEED 3.0f
+#define CAMERA_SENS 0.004f
+#define CAMERA_FOV 60.0f
+
+struct camera_transform {
+    vec3 posititon;
+    vec3 front;
+    vec3 up;
+    vec3 direction;
+    float mov_speed;
+    float yaw, pitch;
+};
+
+struct camera_transform cam;
 
 // time between each frame, used for things such as values that change overtime to stay consistent (e.g movement)
 
@@ -29,15 +44,7 @@ float time;
 
 float width, height;
 
-struct camera_transform {
-    vec3 posititon;
-    vec3 velocity;
-    float mov_speed;
-    float rotation_speed;
-    float yaw, pitch, roll;
-};
-
-struct camera_transform cam;
+#define PRINT_FRAME_TIME_PER_SECONDS 1.0f
 
 // resize gl viewport as window is resized, print debug info also
 
@@ -48,46 +55,83 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     height = (float)height;
 }
 
-// --- INPUT HANDLING --- //
+// mouse-look handling
+
+struct mouse_cursor {
+    double x_pos, y_pos;
+    float sens;
+};
+
+struct mouse_cursor cursor;
+
+void mouse_callback(GLFWwindow* window, double x_pos, double y_pos) {
+    double x_delta, y_delta;
+    
+    x_delta = x_pos - cursor.x_pos;
+    y_delta = y_pos - cursor.y_pos;
+
+    cam.yaw += x_delta * cursor.sens;
+    cam.pitch -= y_delta * cursor.sens;
+
+    // clamp viewing angle
+
+    if(cam.pitch > glm_rad(89.0f)) cam.pitch = glm_rad(89.0f);
+    else if(cam.pitch < glm_rad(-89.0f)) cam.pitch = glm_rad(-89.0f);
+
+    cursor.x_pos = x_pos;
+    cursor.y_pos = y_pos;
+
+    cam.direction[0] = cos(cam.yaw) * cos(cam.pitch);
+    cam.direction[1] = sin(cam.pitch);
+    cam.direction[2] = sin(cam.yaw) * cos(cam.pitch);
+
+    glm_normalize(cam.direction);
+
+    glm_vec3_copy(cam.direction, cam.front);
+}
+
+// handles movement and input, lots of linear algebra stuff to calculate directions with rotations
 
 void input_handling(GLFWwindow* window) {
-    if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) cam.mov_speed = 4.0f;
-    else cam.mov_speed = 2.0f;
-
-    cam.rotation_speed = glm_rad(180.0f);
-
     // quick escape
     if(glfwGetKey(window, GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
 
-    if(glfwGetKey(window, GLFW_KEY_W)) cam.velocity[2] = -cam.mov_speed;
-    else if(glfwGetKey(window, GLFW_KEY_S)) cam.velocity[2] = cam.mov_speed;
-    else cam.velocity[2] = 0;
+    if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) cam.mov_speed = CAMERA_MOV_SPEED * 2;
+    else cam.mov_speed = CAMERA_MOV_SPEED;
 
-    if(glfwGetKey(window, GLFW_KEY_D)) cam.velocity[0] = cam.mov_speed;
-    else if(glfwGetKey(window, GLFW_KEY_A)) cam.velocity[0] = -cam.mov_speed;
-    else cam.velocity[0] = 0;
+    // side movement
 
-    if(glfwGetKey(window, GLFW_KEY_RIGHT)) cam.yaw -= cam.rotation_speed * delta_time;
-    else if(glfwGetKey(window, GLFW_KEY_LEFT)) cam.yaw += cam.rotation_speed * delta_time;
+    vec3 cam_cross;
+    glm_cross(cam.direction, cam.up, cam_cross);
+    glm_normalize(cam_cross);
+    
+    vec3 to_apply_side;
+    glm_vec3_mul((vec3){cam.mov_speed * delta_time, cam.mov_speed * delta_time, cam.mov_speed * delta_time}, cam_cross, to_apply_side);
 
-    if(glfwGetKey(window, GLFW_KEY_UP)) cam.roll -= cam.rotation_speed * delta_time;
-    else if(glfwGetKey(window, GLFW_KEY_DOWN)) cam.roll += cam.rotation_speed * delta_time;
+    // in and out movement
 
-    if(glfwGetKey(window, GLFW_KEY_LEFT_CONTROL)) cam.posititon[1] -= cam.mov_speed * delta_time;
-    else if(glfwGetKey(window, GLFW_KEY_SPACE)) cam.posititon[1] += cam.mov_speed * delta_time;
+    vec3 to_apply_in_out;
+    glm_vec3_mul((vec3){cam.mov_speed * delta_time, cam.mov_speed * delta_time, cam.mov_speed * delta_time}, cam.front, to_apply_in_out);
 
-    mat4 rotate_axes;
+    vec3 to_apply_up_down;
+    glm_vec3_mul((vec3){cam.mov_speed * delta_time, cam.mov_speed * delta_time, cam.mov_speed * delta_time}, cam.up, to_apply_up_down);
 
-    glm_mat4_identity(rotate_axes);
+    if(glfwGetKey(window, GLFW_KEY_W)) 
+        glm_vec3_add(cam.posititon, to_apply_in_out, cam.posititon);
+    else if(glfwGetKey(window, GLFW_KEY_S)) 
+        glm_vec3_sub(cam.posititon, to_apply_in_out, cam.posititon);
+    if(glfwGetKey(window, GLFW_KEY_D)) 
+        glm_vec3_add(cam.posititon, to_apply_side, cam.posititon);
+    else if(glfwGetKey(window, GLFW_KEY_A)) 
+        glm_vec3_sub(cam.posititon, to_apply_side, cam.posititon);
+    if(glfwGetKey(window, GLFW_KEY_SPACE)) 
+        glm_vec3_add(cam.posititon, to_apply_up_down, cam.posititon);
+    else if(glfwGetKey(window, GLFW_KEY_LEFT_CONTROL)) 
+        glm_vec3_sub(cam.posititon, to_apply_up_down, cam.posititon);
 
-    glm_rotate(rotate_axes, cam.yaw, (vec3){0, 1, 0});
-
-    glm_mat4_mulv3(rotate_axes, cam.velocity, 1.0f, cam.velocity);
-
-    glm_vec3_mul(cam.velocity, (vec3){delta_time, delta_time, delta_time}, cam.velocity);
-
-    glm_vec3_add(cam.posititon, cam.velocity, cam.posititon);
 }
+
+// program entry
 
 int main(void) {
     // init opengl, set version and profile (core profile)
@@ -114,9 +158,22 @@ int main(void) {
 
     glfwMakeContextCurrent(window);
 
-    // frame resizing
+    // callbacks
 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+
+    // input setup
+
+    cam.mov_speed = CAMERA_MOV_SPEED;
+    cursor.sens = CAMERA_SENS;
+
+    // prepare camera
+
+    cam.posititon[2] = 3.0f;
+
+    glm_vec3((vec4){0, 0, -1, 0}, cam.front);
+    glm_vec3((vec4){0, 1, 0, 0}, cam.up);
 
     // init glad (opengl function pointers)
 
@@ -129,30 +186,26 @@ int main(void) {
 
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-    // disable vsync
+    // capture mouse
 
-    glfwSwapInterval(0);
-
-    // print info about max number of vertex attribs
-
-    int num_attributes;
-
-    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &num_attributes);
-
-    printf("maximum number of vertex attribs : %d", num_attributes);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  
 
 
     // ------------ SHADERS ------------ //
 
-    unsigned int shader_program = link_and_compile_shaders("D:\\!programming\\C\\rhino\\src\\shaders\\vertex_shader.glsl", "D:\\!programming\\C\\rhino\\src\\shaders\\fragment_shader.glsl");
+    unsigned int shader_program = link_and_compile_shaders("vertex_shader.glsl", "fragment_shader.glsl");
 
     glUseProgram(shader_program);
 
+    // --- TEXTURES --- //
+    
+    load_texture("pebbles.jpg", 0);
+    load_texture("container.jpg", 1);
 
-    // ------- QUAD DEFINE, VBO + VAO ------- //
 
+    // ------- CUBE DEFINE, VBO + VAO ------- //
 
-    // quad primitive as vertex coordinates
+    // cube primitive as vertex coordinates
 
     float vertices[] = {
         -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
@@ -220,78 +273,9 @@ int main(void) {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (GLvoid*)(3 * sizeof(GLfloat)));
     glEnableVertexAttribArray(1);
 
-
     // unbind
 
     glBindVertexArray(0);
-
-    // --- TEXTURES --- //
-
-
-    // generate texture object in gpu memory and id
-
-    unsigned int pebbles_texture;
-    glGenTextures(1, &pebbles_texture);
-    glBindTexture(GL_TEXTURE_2D, pebbles_texture);
-
-    // textures, set textures to perform a mirrored repeat when exceeding past 0 - 1 tex coords on x axis
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    // load image with stb image
-
-    int width, height, channels;
-    unsigned char* tex_data = stbi_load("assets/img/pebbles.jpg", &width, &height, &channels, 0);
-
-    // quick error check, if image couldnt load then exit the applicaiton
-
-    if(tex_data) {
-        // pass texture into gpu memory and generate mipmap
-
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, tex_data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-
-        // image has been loaded into gpu and mipmaps have been generated, no longer needs to be stored in main ram, free the image from ram
-
-        stbi_image_free(tex_data);
-    }
-    else {
-        printf("failed to load texture, exiting program");
-        return -1;
-    }
-
-    unsigned int crate_texture;
-
-    glGenTextures(1, &crate_texture);
-    glBindTexture(GL_TEXTURE_2D, crate_texture);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-    
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    unsigned char* crt_dat = stbi_load("assets\\img\\container.jpg", &width, &height, &channels, 0);
-
-    if(crt_dat) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, crt_dat);
-        glGenerateMipmap(GL_TEXTURE_2D);
-
-        stbi_image_free(crt_dat);
-    }
-    else {
-        printf("error loading crate texture, exiting");
-        return -1;
-    }
-    
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, pebbles_texture);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, crate_texture);
 
     // frametime and fps counter timer
 
@@ -300,25 +284,11 @@ int main(void) {
 
     // cglm
 
-    // rotate quad to lay down
+    // prepare model, view and projection matrices
 
-    mat4 model;
-    glm_mat4_identity(model);
-    glm_rotate(model, glm_rad(-60.0f), (vec3){1, 0, 0});
+    mat4 model, view, proj;
 
-    // view matrix
-
-    mat4 view;
-    glm_mat4_identity(view);
-    glm_translate(view, (vec3){0.0f, 0.0f, -3.0f});
-
-    // projection
-
-    float fov = 60.0f;
-
-    mat4 proj;
-
-    glm_perspective(glm_rad(fov), width/height, 0.1f, 100.0f, proj);
+    glm_perspective(glm_rad(CAMERA_FOV), width/height, 0.1f, 100.0f, proj);
 
     unsigned int model_loc, view_loc, proj_loc;
 
@@ -333,15 +303,10 @@ int main(void) {
 
     glEnable(GL_DEPTH_TEST);
 
-    // randomly generate a ton of cubes
+    unsigned int light_pos_loc = glGetUniformLocation(shader_program, "light_pos");
+    unsigned int texture_scale_location = glGetUniformLocation(shader_program, "texture_scale");
 
-    vec3 cube_positions[20];
-
-    glm_vec3((vec4){0.0f, 0.0f, 0.0f, 1.0f}, cube_positions[0]);
-
-    for(int i = 1; i < 20; i++) {
-        glm_vec3((vec4){(float)(rand() % 10), (float)(rand() % 10), (float)(rand() % 10) * -1, 1.0f}, cube_positions[i]);
-    }
+    vec3 light_color;
 
 
     // begin render loop, check input and swap buffers
@@ -354,36 +319,67 @@ int main(void) {
         glUseProgram(shader_program);
 
         // set blank greenish background and clear screen
-        glClearColor(0.65f, 0.8f, 1.0f, 1.0f);
+        glClearColor(0.7f, 0.9f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // set up projection
+
         glm_mat4_identity(proj);
-        glm_perspective(glm_rad(fov), width/height, 0.1f, 100.0f, proj);
+        glm_perspective(glm_rad(CAMERA_FOV), width/height, 0.1f, 100.0f, proj);
         glUniformMatrix4fv(proj_loc, 1, GL_FALSE, (float*)proj);
 
+        // camera view
+
         glm_mat4_identity(view);
-        glm_rotate(view, cam.roll, (vec3){1, 0, 0});
-        glm_rotate(view, -cam.yaw, (vec3){0, 1, 0});
-        glm_translate(view, (vec3){0.0f - cam.posititon[0], 0.0f - cam.posititon[1], -3.0f - cam.posititon[2]});
+
+        float camX = sin(time * 0.5f) * 10;
+        float camZ = cos(time * 0.5f) * 10;
+
+        vec3 target;
+
+        glm_vec3_zero(target);
+
+        glm_vec3_add(cam.posititon, cam.front, target);
+
+        glm_lookat(cam.posititon, target, cam.up, view);
 
         glUniformMatrix4fv(view_loc, 1, GL_FALSE, (float*)view);
 
-        glUniform4f(glGetUniformLocation(shader_program, "playerpos"), cam.posititon[0], cam.posititon[1], cam.posititon[2], 1.0f);
+        // lights
 
-        for(int i = 0; i < 20; i++) {
-            glm_mat4_identity(model);
-            glm_rotate(model, glm_rad(-60.0f * time), (vec3){0.5f, 1.0f, 0.0f});
-            glm_translate(model, cube_positions[i]);
+        vec3 light_pos;
+        glm_vec3((vec4){cos(time * 2) - sin(time * 2), (cos(time) * 2) + 0.5f, cos(time * 2) + sin(time * 2), 1}, light_pos);
 
-            glUniformMatrix4fv(model_loc, 1, GL_FALSE, (float*)model);
+        glUniform4f(light_pos_loc, light_pos[0], light_pos[1], light_pos[2], 1.0f);
 
-            // draw quad
+        // draw pebble ground
 
-            glBindVertexArray(VAO);
-            glUniform1i(glGetUniformLocation(shader_program, "texture_sample1"), 1);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-            glBindVertexArray(0);
-        }
+        glm_mat4_identity(model);
+        glm_translate(model, (vec3){0, -10.5f, 0});
+        glm_scale(model, (vec3){20, 20, 20});
+
+        glUniformMatrix4fv(model_loc, 1, GL_FALSE, (float*)model);
+
+        glUniform1f(texture_scale_location, 8);
+
+        glBindVertexArray(VAO);
+        glUniform1i(glGetUniformLocation(shader_program, "texture_sample1"), 0);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glBindVertexArray(0);
+
+        // draw rotating crate
+
+        glm_mat4_identity(model);
+        glm_translate(model, (vec3){0.0f, 1.0f, 0.0f});
+        glm_rotate(model, glm_rad(-60.0f * time), (vec3){0.5f, 1.0f, 0.0f});
+
+        glUniformMatrix4fv(model_loc, 1, GL_FALSE, (float*)model);
+
+        glBindVertexArray(VAO);
+        glUniform1f(texture_scale_location, 1);
+        glUniform1i(glGetUniformLocation(shader_program, "texture_sample1"), 1);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glBindVertexArray(0);
 
         // display
 
@@ -397,7 +393,6 @@ int main(void) {
         // frame time counters, print frametime counter every N seconds as specified in define at top
 
         delta_time = time - last_frame_draw;
-
         fps_timer_counter -= delta_time;
 
         if(fps_timer_counter <= 0) {
@@ -414,7 +409,6 @@ int main(void) {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteProgram(shader_program);
-    glDeleteTextures(1, &pebbles_texture);
 
     glfwTerminate();
 

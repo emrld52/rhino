@@ -8,6 +8,14 @@
 // returns unsigned int to shader program
 
 unsigned int link_and_compile_shaders(char* vertex_path, char* fragment_path) {
+    // print info about max number of vertex attribs
+
+    int num_attributes;
+
+    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &num_attributes);
+
+    printf("maximum number of vertex attribs : %d", num_attributes);
+
     // buffers which we will load shaders into, will then send these to gpu memory, compile and link them and then return the unsigned int pointing to the shader program in memory
 
     int success;
