@@ -140,6 +140,7 @@ int main(void) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     // init opengl window (fullscreen, change glfwGetPrimaryMonitor to NULL if you so need/desire windowed mode)
 
@@ -305,9 +306,7 @@ int main(void) {
 
     unsigned int light_pos_loc = glGetUniformLocation(shader_program, "light_pos");
     unsigned int texture_scale_location = glGetUniformLocation(shader_program, "texture_scale");
-
-    vec3 light_color;
-
+    unsigned int texture_sample_loc = glGetUniformLocation(shader_program, "texture_sample1");
 
     // begin render loop, check input and swap buffers
 
@@ -335,12 +334,12 @@ int main(void) {
         float camX = sin(time * 0.5f) * 10;
         float camZ = cos(time * 0.5f) * 10;
 
+        // target direction to look at
+
         vec3 target;
 
         glm_vec3_zero(target);
-
         glm_vec3_add(cam.posititon, cam.front, target);
-
         glm_lookat(cam.posititon, target, cam.up, view);
 
         glUniformMatrix4fv(view_loc, 1, GL_FALSE, (float*)view);
@@ -363,7 +362,7 @@ int main(void) {
         glUniform1f(texture_scale_location, 8);
 
         glBindVertexArray(VAO);
-        glUniform1i(glGetUniformLocation(shader_program, "texture_sample1"), 0);
+        glUniform1i(texture_sample_loc, 0);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glBindVertexArray(0);
 

@@ -5,6 +5,8 @@ in vec4 worldpos;
 
 out vec4 frag_color;
 
+// currently can only take one light, extremely easily expandable though (merely make an array and pass in multiple light uniforms in render loop)
+
 uniform sampler2D texture_sample1;
 uniform vec4 light_pos;
 uniform float texture_scale;

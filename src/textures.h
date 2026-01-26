@@ -5,4 +5,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+// loads image from path to a texture unit
+
 void load_texture(char* texture_path, int texture_unit);
