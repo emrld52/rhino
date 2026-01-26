@@ -3,7 +3,7 @@ MAKEFLAGS += -j8
 CC = gcc
 LIBS += -lglfw3 -lopengl32 -lgdi32 -luser32
 
-SRC += src/main.c src/glad/glad.c src/shaders.c src/textures.c
+SRC += src/main.c src/glad/glad.c src/shaders.c src/textures.c src/rhino_callbacks.c
 
 BIN_DIR = bin
 
@@ -14,4 +14,4 @@ PROGRAM_NAME = rhino_demo.exe
 HIDE_CONSOLE = 
 
 build_executable: src/main.c
-	$(CC) $(SRC) -o $(BIN_DIR)/$(PROGRAM_NAME) $(LIBS) $(HIDE_CONSOLE) -static
+	$(CC) $(SRC) -o $(BIN_DIR)/$(PROGRAM_NAME) $(LIBS) $(HIDE_CONSOLE) -O3 -static
