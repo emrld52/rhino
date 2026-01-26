@@ -2,6 +2,4 @@
 .vscode/settings.json
 bin/bin.zip
 .vscode/tasks.json
-bin/vertex_shader.glsl
-bin/fragment_shader.glsl
 bin/awesomeface.png
