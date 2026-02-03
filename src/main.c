@@ -29,7 +29,7 @@ rhino_state rhino;
 float delta_time = 0.01f;
 float time;
 
-float width, height;
+float window_width, window_height;
 
 #define PRINT_FRAME_TIME_PER_SECONDS 1.0f
 
@@ -38,34 +38,36 @@ float width, height;
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
     printf("\nwindow resized to %dx%d", width, height);
-    width = (float)width;
-    height = (float)height;
+    window_width = (float)width;
+    window_height = (float)height;
 }
 
 void mouse_callback(GLFWwindow* window, double x_pos, double y_pos) {
-    double x_delta, y_delta;
-    
-    x_delta = x_pos - rhino.mouse.x_pos;
-    y_delta = y_pos - rhino.mouse.y_pos;
+    if(!rhino.mouse.unlocked) {
+        double x_delta, y_delta;
+        
+        x_delta = x_pos - rhino.mouse.x_pos;
+        y_delta = y_pos - rhino.mouse.y_pos;
 
-    rhino.cam.yaw += x_delta * rhino.mouse.sens;
-    rhino.cam.pitch -= y_delta * rhino.mouse.sens;
+        rhino.cam.yaw += x_delta * rhino.mouse.sens;
+        rhino.cam.pitch -= y_delta * rhino.mouse.sens;
 
-    // clamp viewing angle
+        // clamp viewing angle
 
-    if(rhino.cam.pitch > glm_rad(89.0f)) rhino.cam.pitch = glm_rad(89.0f);
-    else if(rhino.cam.pitch < glm_rad(-89.0f)) rhino.cam.pitch = glm_rad(-89.0f);
+        if(rhino.cam.pitch > glm_rad(89.0f)) rhino.cam.pitch = glm_rad(89.0f);
+        else if(rhino.cam.pitch < glm_rad(-89.0f)) rhino.cam.pitch = glm_rad(-89.0f);
 
-    rhino.mouse.x_pos = x_pos;
-    rhino.mouse.y_pos = y_pos;
+        rhino.mouse.x_pos = x_pos;
+        rhino.mouse.y_pos = y_pos;
 
-    rhino.cam.direction[0] = cos(rhino.cam.yaw) * cos(rhino.cam.pitch);
-    rhino.cam.direction[1] = sin(rhino.cam.pitch);
-    rhino.cam.direction[2] = sin(rhino.cam.yaw) * cos(rhino.cam.pitch);
+        rhino.cam.direction[0] = cos(rhino.cam.yaw) * cos(rhino.cam.pitch);
+        rhino.cam.direction[1] = sin(rhino.cam.pitch);
+        rhino.cam.direction[2] = sin(rhino.cam.yaw) * cos(rhino.cam.pitch);
 
-    glm_normalize(rhino.cam.direction);
+        glm_normalize(rhino.cam.direction);
 
-    glm_vec3_copy(rhino.cam.direction, rhino.cam.front);
+        glm_vec3_copy(rhino.cam.direction, rhino.cam.front);
+    }
 }
 
 // program entry
@@ -77,7 +79,6 @@ int main(void) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     // init opengl window (fullscreen, change glfwGetPrimaryMonitor to NULL if you so need/desire windowed mode)
 
@@ -85,8 +86,8 @@ int main(void) {
 
     rhino.window = window;
 
-    width = WINDOW_WIDTH;
-    height = WINDOW_HEIGHT;
+    window_width = WINDOW_WIDTH;
+    window_height = WINDOW_HEIGHT;
 
     if (window == NULL) {
         printf("\nfailed to create a glfw window.");
@@ -123,6 +124,10 @@ int main(void) {
     }
 
     glfwSwapInterval(0);
+
+    // screen details
+
+    const GLFWvidmode * mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 
     // pass dimensions into opengl viewport
 
@@ -230,7 +235,7 @@ int main(void) {
 
     mat4 model, view, proj;
 
-    glm_perspective(glm_rad(CAMERA_FOV), width/height, 0.1f, 100.0f, proj);
+    glm_perspective(glm_rad(CAMERA_FOV), window_width/window_height, 0.1f, 100.0f, proj);
 
     unsigned int model_loc, view_loc, proj_loc;
 
@@ -262,10 +267,24 @@ int main(void) {
         // set up projection
 
         glm_mat4_identity(proj);
-        glm_perspective(glm_rad(CAMERA_FOV), width/height, 0.1f, 100.0f, proj);
+        glm_perspective(glm_rad(CAMERA_FOV), window_width/window_height, 0.1f, 100.0f, proj);
         glUniformMatrix4fv(proj_loc, 1, GL_FALSE, (float*)proj);
 
-        // input update callback
+        // input update callback, f11 fullscreen control hardcoded into engine, not callback
+
+        if(glfwGetKey(window, GLFW_KEY_F11) == GLFW_PRESS) {
+            glfwWaitEventsTimeout(1.0);
+            glfwSetWindowMonitor(window, rhino.cam.fullscreen ? glfwGetPrimaryMonitor() : NULL, 0, 0, mode->width, mode->height, GLFW_DONT_CARE);
+            rhino.cam.fullscreen = !rhino.cam.fullscreen;
+
+            if(rhino.cam.fullscreen) { 
+                glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+                glfwSetWindowSize(window, WINDOW_WIDTH, WINDOW_HEIGHT); 
+                glfwSetWindowPos(window, 200, 200);
+                window_width = WINDOW_WIDTH;
+                window_height = WINDOW_HEIGHT;
+            }
+        }
 
         rhino_input_update();
 

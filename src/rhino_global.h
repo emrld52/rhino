@@ -14,11 +14,13 @@ typedef struct camera_transform_t {
     vec3 direction;
     float mov_speed;
     float yaw, pitch;
+    bool fullscreen;
 } camera_transform;
 
 typedef struct mouse_cursor_t {
     double x_pos, y_pos;
     float sens;
+    bool unlocked;
 } mouse_cursor;
 
 typedef struct rhino_state_t {

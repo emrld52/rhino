@@ -62,6 +62,17 @@ void rhino_input_update() {
         glm_vec3_add(rhino.cam.posititon, to_apply_up_down, rhino.cam.posititon);
     else if(glfwGetKey(rhino.window, GLFW_KEY_LEFT_CONTROL)) 
         glm_vec3_sub(rhino.cam.posititon, to_apply_up_down, rhino.cam.posititon);
+
+    // unlock or lock mouse
+
+    if(glfwGetKey(rhino.window, GLFW_KEY_U) == GLFW_PRESS) {
+        rhino.mouse.unlocked = !rhino.mouse.unlocked;
+
+        glfwWaitEventsTimeout(0.5);
+
+        if(rhino.mouse.unlocked) glfwSetInputMode(rhino.window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);  
+        else glfwSetInputMode(rhino.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  
+    }
 }
 
 // render objects here
