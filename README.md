@@ -60,12 +60,8 @@ Rhino only uses a handful of low-level libraries :
 
 # Building
 
-Windows (MSYS2 + GCC + Make) :
+Windows (MINGW64 GCC + Make) or Linux (GCC + Make) :
 
 - clone repo
 - ensure GLFW library is downloaded and in your includes
 - run "make"
-
-Linux (GCC + Make) :
-- should be the same, you will need to change the bound libraries in the Makefile to that of the relevant Linux libraries though, if I can find these I'll include them in an ifdef
-- might need to remove -mwindows flag as it might be exclusive to compiling windows binaries
