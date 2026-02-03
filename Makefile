@@ -1,6 +1,8 @@
 SRC += src/main.c src/glad/glad.c src/shaders.c src/textures.c src/rhino_callbacks.c
 BIN_DIR = bin
 
+# linux executable assumed x11 and not wayland
+
 ifeq ($(OS), Windows_NT)
 	LIBS += -lglfw3 -lopengl32 -lgdi32 -luser32
 	PROGRAM_NAME = rhino_demo.exe
