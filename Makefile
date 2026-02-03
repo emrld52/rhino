@@ -1,17 +1,17 @@
-MAKEFLAGS += -j8
-
-CC = gcc
-LIBS += -lglfw3 -lopengl32 -lgdi32 -luser32
-
 SRC += src/main.c src/glad/glad.c src/shaders.c src/textures.c src/rhino_callbacks.c
-
 BIN_DIR = bin
 
-PROGRAM_NAME = rhino_demo.exe
-
-# windows only, set to -mwindows to hide console, otherwise leave blank (e.g if debugging)
-
-HIDE_CONSOLE = 
+ifeq ($(OS), Windows_NT)
+	LIBS += -lglfw3 -lopengl32 -lgdi32 -luser32
+	PROGRAM_NAME = rhino_demo.exe
+else
+	LIBS += -lglfw -lGL -lX11 -lpthread -lXrandr -lXi -ldl -lm
+	PROGRAM_NAME = rhino_demo
+endif
 
 build_executable: src/main.c
-	$(CC) $(SRC) -o $(BIN_DIR)/$(PROGRAM_NAME) $(LIBS) $(HIDE_CONSOLE) -O3 -static
+ifeq ($(OS), Windows_NT)
+	gcc $(SRC) -o $(BIN_DIR)/$(PROGRAM_NAME) $(LIBS) -mwindows -O3 -static
+else
+	gcc $(SRC) -o $(BIN_DIR)/$(PROGRAM_NAME) $(LIBS) -O3
+endif
